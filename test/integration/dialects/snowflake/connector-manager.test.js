@@ -12,11 +12,11 @@ if (dialect === 'snowflake') {
 
     before(async () => {
       const sequelize = Support.createSequelizeInstance();
-      User = sequelize.define('User', { username: DataTypes.STRING });
+      User = sequelize.define('User', { username: DataTypes.STRING, refdate: DataTypes.DATE });
 
       await User.sync({ force: true });
-      await User.create({ id: 1, username: 'jozef' });
-      await User.create({ id: 2, username: 'jeff' });
+      await User.create({ id: 1, username: 'jozef', refdate: '2020-07-23' });
+      await User.create({ id: 2, username: 'jeff', refdate: '2020-09-21' });
     });
 
     after(async () =>{
@@ -30,7 +30,18 @@ if (dialect === 'snowflake') {
           username: 'jeff'
         }
       });
-      await user.id.should.equal(2);
+      console.log(user);
+      user.id.should.equal(2);
+    });
+
+    it('date value at result', async () => {
+      const user = await User.findOne({
+        where:
+        {
+          username: 'jeff'
+        }
+      });
+      expect(user.refdate instanceof Date).equal(true);
     });
 
     it('findAll with orderby', async () => {
@@ -39,7 +50,7 @@ if (dialect === 'snowflake') {
       const users = await User.findAll({
         order: [['createdAt', 'ASC']]
       });
-      await users[users.length - 1].username.should.equal(username);
+      users[users.length - 1].username.should.equal(username);
     });
 
     it('Update', async () => {
