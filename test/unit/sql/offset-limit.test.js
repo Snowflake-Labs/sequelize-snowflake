@@ -78,7 +78,7 @@ describe(Support.getTestDialectTeaser('SQL'), () => {
       sqlite: " LIMIT ''';DELETE FROM user', 10",
       postgres: " LIMIT 10 OFFSET ''';DELETE FROM user'",
       mariadb: " LIMIT '\\';DELETE FROM user', 10",
-      snowflake: " LIMIT ''';DELETE FROM user', OFFSET 10",
+      snowflake: " LIMIT 10 OFFSET ''';DELETE FROM user'",
       mysql: " LIMIT '\\';DELETE FROM user', 10",
       mssql: " OFFSET N''';DELETE FROM user' ROWS FETCH NEXT 10 ROWS ONLY"
     });
