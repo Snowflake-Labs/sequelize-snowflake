@@ -1,7 +1,7 @@
 'use strict';
 
 const Support = require('../support'),
-  DataTypes = require('../../../lib/data-types'),
+  DataTypes = require('sequelize/lib/data-types'),
   Sequelize = Support.Sequelize,
   chai = require('chai'),
   util = require('util'),
@@ -73,8 +73,7 @@ describe(Support.getTestDialectTeaser('SQL'), () => {
         default: 'TEXT',
         mssql: 'NVARCHAR(256)',
         mariadb: 'TINYTEXT',
-        mysql: 'TINYTEXT',
-        snowflake: 'TEXT'
+        mysql: 'TINYTEXT'
       });
 
       testsql('TEXT({ length: "tiny" })', DataTypes.TEXT({ length: 'tiny' }), {

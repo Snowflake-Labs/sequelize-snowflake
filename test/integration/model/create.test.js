@@ -2,10 +2,10 @@
 
 const chai = require('chai'),
   sinon = require('sinon'),
-  Sequelize = require('../../../index'),
+  Sequelize = require('sequelize'),
   expect = chai.expect,
   Support = require('../support'),
-  DataTypes = require('../../../lib/data-types'),
+  DataTypes = require('sequelize/lib/data-types'),
   dialect = Support.getTestDialect(),
   Op = Sequelize.Op,
   _ = require('lodash'),
@@ -568,31 +568,50 @@ describe(Support.getTestDialectTeaser('Model'), () => {
   });
 
   describe('findCreateFind', () => {
-    (dialect !== 'sqlite' ? it : it.skip)('should work with multiple concurrent calls', async function() {
-      const [first, second, third] = await Promise.all([
-        this.User.findOrCreate({ where: { uniqueName: 'winner' } }),
-        this.User.findOrCreate({ where: { uniqueName: 'winner' } }),
-        this.User.findOrCreate({ where: { uniqueName: 'winner' } })
-      ]);
+    if (dialect !== 'sqlite') {
+      it('should work with multiple concurrent calls', async function() {
+        const [
+          [instance1, created1],
+          [instance2, created2],
+          [instance3, created3]
+        ] = await Promise.all([
+          this.User.findCreateFind({ where: { uniqueName: 'winner' } }),
+          this.User.findCreateFind({ where: { uniqueName: 'winner' } }),
+          this.User.findCreateFind({ where: { uniqueName: 'winner' } })
+        ]);
 
-      const firstInstance = first[0],
-        firstCreated = first[1],
-        secondInstance = second[0],
-        secondCreated = second[1],
-        thirdInstance = third[0],
-        thirdCreated = third[1];
+        // All instances are the same
+        expect(instance1.id).to.equal(1);
+        expect(instance2.id).to.equal(1);
+        expect(instance3.id).to.equal(1);
+        // Only one of the createdN values is true
+        expect(!!(created1 ^ created2 ^ created3)).to.be.true;
+      });
 
-      expect([firstCreated, secondCreated, thirdCreated].filter(value => {
-        return value;
-      }).length).to.equal(1);
+      if (current.dialect.supports.transactions) {
+        it('should work with multiple concurrent calls within a transaction', async function() {
+          const t = await this.sequelize.transaction();
+          const [
+            [instance1, created1],
+            [instance2, created2],
+            [instance3, created3]
+          ] = await Promise.all([
+            this.User.findCreateFind({ transaction: t, where: { uniqueName: 'winner' } }),
+            this.User.findCreateFind({ transaction: t, where: { uniqueName: 'winner' } }),
+            this.User.findCreateFind({ transaction: t, where: { uniqueName: 'winner' } })
+          ]);
 
-      expect(firstInstance).to.be.ok;
-      expect(secondInstance).to.be.ok;
-      expect(thirdInstance).to.be.ok;
+          await t.commit();
 
-      expect(firstInstance.id).to.equal(secondInstance.id);
-      expect(secondInstance.id).to.equal(thirdInstance.id);
-    });
+          // All instances are the same
+          expect(instance1.id).to.equal(1);
+          expect(instance2.id).to.equal(1);
+          expect(instance3.id).to.equal(1);
+          // Only one of the createdN values is true
+          expect(!!(created1 ^ created2 ^ created3)).to.be.true;
+        });
+      }
+    }
   });
 
   describe('create', () => {
@@ -810,7 +829,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
     }
 
     it('is possible to use casting when creating an instance', async function() {
-      const type = dialect === 'mysql' || dialect === 'mariadb' ? 'signed' : 'integer';
+      const type = ['mysql', 'mariadb'].includes(dialect) ? 'signed' : 'integer';
       let match = false;
 
       const user = await this.User.create({
@@ -831,7 +850,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
       let type = this.sequelize.cast(this.sequelize.cast(this.sequelize.literal('1-2'), 'integer'), 'integer'),
         match = false;
 
-      if (dialect === 'mysql' || dialect === 'mariadb') {
+      if (['mysql', 'mariadb'].includes(dialect)) {
         type = this.sequelize.cast(this.sequelize.cast(this.sequelize.literal('1-2'), 'unsigned'), 'signed');
       }
 
@@ -839,7 +858,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
         intVal: type
       }, {
         logging(sql) {
-          if (dialect === 'mysql' || dialect === 'mariadb') {
+          if (['mysql', 'mariadb'].includes(dialect)) {
             expect(sql).to.contain('CAST(CAST(1-2 AS UNSIGNED) AS SIGNED)');
           } else {
             expect(sql).to.contain('CAST(CAST(1-2 AS INTEGER) AS INTEGER)');
@@ -990,7 +1009,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
       }
     });
 
-    if (dialect === 'postgres' || dialect === 'sqlite') {
+    if (['postgres', 'sqlite'].includes(dialect)) {
       it("doesn't allow case-insensitive duplicated records using CITEXT", async function() {
         const User = this.sequelize.define('UserWithUniqueCITEXT', {
           username: { type: Sequelize.CITEXT, unique: true }
